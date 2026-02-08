@@ -1,49 +1,60 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import SearchBar from '@/components/SearchBar'
 import KeywordTable from '@/components/KeywordTable'
-import { generateDemoAnalysis, calculateMoneyScore, getMoneyGrade } from '@/lib/keyword-engine'
 import { cn } from '@/lib/utils'
-import { Compass, Gem, Target, Lightbulb, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
+import { Compass, Gem, Target, Lightbulb, Loader2, Wifi, WifiOff } from 'lucide-react'
 
-const blueOceanKeywords = [
-  { keyword: '재택근무 부업 추천', monthlyVolume: 2400, competition: 'low' as const, moneyScore: 82, moneyGrade: 'A' as const },
-  { keyword: '소액 투자 방법 2024', monthlyVolume: 1800, competition: 'low' as const, moneyScore: 78, moneyGrade: 'A' as const },
-  { keyword: '직장인 자격증 추천', monthlyVolume: 3200, competition: 'medium' as const, moneyScore: 75, moneyGrade: 'A' as const },
-  { keyword: '홈카페 용품 추천', monthlyVolume: 1500, competition: 'low' as const, moneyScore: 85, moneyGrade: 'A' as const },
-  { keyword: '1인가구 가전 추천', monthlyVolume: 2100, competition: 'low' as const, moneyScore: 88, moneyGrade: 'A' as const },
-  { keyword: '건강기능식품 비교', monthlyVolume: 4500, competition: 'medium' as const, moneyScore: 91, moneyGrade: 'S' as const },
-  { keyword: '전기자전거 가성비', monthlyVolume: 1200, competition: 'low' as const, moneyScore: 79, moneyGrade: 'A' as const },
-  { keyword: '온라인 수익 창출', monthlyVolume: 3800, competition: 'medium' as const, moneyScore: 72, moneyGrade: 'A' as const },
-]
-
-const categoryKeywords: Record<string, Array<{ keyword: string; monthlyVolume: number; competition: 'high' | 'medium' | 'low'; moneyScore: number; moneyGrade: 'S' | 'A' | 'B' | 'C' | 'D' }>> = {
-  '재테크': [
-    { keyword: '주식 초보 종목 추천', monthlyVolume: 5200, competition: 'medium', moneyScore: 74, moneyGrade: 'A' },
-    { keyword: 'ETF 적립식 투자', monthlyVolume: 3100, competition: 'low', moneyScore: 81, moneyGrade: 'A' },
-    { keyword: '배당주 추천 2024', monthlyVolume: 4800, competition: 'medium', moneyScore: 77, moneyGrade: 'A' },
-  ],
-  '건강': [
-    { keyword: '유산균 추천 순위', monthlyVolume: 6800, competition: 'high', moneyScore: 86, moneyGrade: 'A' },
-    { keyword: '단백질 보충제 비교', monthlyVolume: 4200, competition: 'medium', moneyScore: 83, moneyGrade: 'A' },
-    { keyword: '간헐적 단식 효과', monthlyVolume: 7500, competition: 'medium', moneyScore: 65, moneyGrade: 'B' },
-  ],
-  'IT/테크': [
-    { keyword: '노트북 추천 2024', monthlyVolume: 12000, competition: 'high', moneyScore: 72, moneyGrade: 'A' },
-    { keyword: '무선 이어폰 가성비', monthlyVolume: 8500, competition: 'high', moneyScore: 79, moneyGrade: 'A' },
-    { keyword: 'AI 도구 추천', monthlyVolume: 3200, competition: 'low', moneyScore: 90, moneyGrade: 'S' },
-  ],
-  '부동산': [
-    { keyword: '청약 자격 조건', monthlyVolume: 9200, competition: 'medium', moneyScore: 68, moneyGrade: 'B' },
-    { keyword: '전세 vs 월세', monthlyVolume: 5100, competition: 'low', moneyScore: 62, moneyGrade: 'B' },
-    { keyword: '부동산 투자 방법', monthlyVolume: 4300, competition: 'medium', moneyScore: 75, moneyGrade: 'A' },
-  ],
+interface DiscoverKeyword {
+  keyword: string
+  monthlyVolume: number
+  competition: 'high' | 'medium' | 'low'
+  moneyScore: number
+  moneyGrade: 'S' | 'A' | 'B' | 'C' | 'D'
+  isBlueOcean: boolean
 }
 
-export default function DiscoverPage() {
-  const [selectedCategory, setSelectedCategory] = useState<string>('재테크')
+const categoryList = ['재테크', '건강', 'IT/테크', '부동산', '교육', '패션', '여행', '생활']
+
+function DiscoverContent() {
+  const searchParams = useSearchParams()
+  const initialCategory = searchParams.get('category') || '재테크'
+
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory)
+  const [blueOcean, setBlueOcean] = useState<DiscoverKeyword[]>([])
+  const [allKeywords, setAllKeywords] = useState<DiscoverKeyword[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isRealData, setIsRealData] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchDiscover() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const res = await fetch(`/api/discover?category=${encodeURIComponent(selectedCategory)}`)
+        const json = await res.json()
+
+        if (json.success && json.data) {
+          setBlueOcean(json.data.blueOcean || [])
+          setAllKeywords(json.data.all || [])
+          setIsRealData(true)
+        } else {
+          setError(json.error || '데이터를 불러올 수 없습니다')
+        }
+      } catch (err) {
+        console.error('Discover fetch error:', err)
+        setError('네트워크 오류: API 서버에 연결할 수 없습니다')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDiscover()
+  }, [selectedCategory])
 
   return (
     <div className="space-y-8">
@@ -52,6 +63,11 @@ export default function DiscoverPage() {
         <div className="flex items-center gap-3 mb-1">
           <Compass className="w-7 h-7 text-purple-500" />
           <h1 className="text-2xl font-bold text-gray-900">키워드 발굴</h1>
+          {isRealData && (
+            <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+              <Wifi className="w-3 h-3" /> 실데이터
+            </span>
+          )}
         </div>
         <p className="text-gray-500 text-sm">경쟁이 적고 수익성 높은 블루오션 키워드를 발굴하세요</p>
       </div>
@@ -63,47 +79,68 @@ export default function DiscoverPage() {
         <SearchBar placeholder="시드 키워드를 입력하세요 (예: 다이어트, 부업, 투자)" />
       </div>
 
-      {/* Blue Ocean Keywords */}
-      <div className="card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Gem className="w-5 h-5 text-blue-500" />
-          <h2 className="font-bold text-gray-900">블루오션 키워드 발굴</h2>
-          <span className="ml-auto text-xs text-gray-400">AI 추천 • 매일 업데이트</span>
-        </div>
-        <p className="text-sm text-gray-500 mb-4">
-          검색량 대비 콘텐츠 포화도가 낮고, Money Score가 높은 키워드입니다
-        </p>
-        <KeywordTable keywords={blueOceanKeywords} />
+      {/* Category Tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {categoryList.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={cn(
+              'px-4 py-2 rounded-full text-sm font-medium transition-colors',
+              selectedCategory === cat
+                ? 'bg-accent text-gray-900'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            )}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
-      {/* Category Keywords */}
-      <div className="card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Target className="w-5 h-5 text-orange-500" />
-          <h2 className="font-bold text-gray-900">카테고리별 추천 키워드</h2>
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24">
+          <Loader2 className="w-10 h-10 text-purple-500 animate-spin mb-4" />
+          <p className="text-gray-500 font-medium">&ldquo;{selectedCategory}&rdquo; 카테고리 키워드 발굴 중...</p>
+          <p className="text-gray-400 text-sm mt-1">네이버 검색광고 API에서 실제 데이터 수집 중</p>
         </div>
-
-        <div className="flex gap-2 flex-wrap mb-6">
-          {Object.keys(categoryKeywords).map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={cn(
-                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
-                selectedCategory === cat
-                  ? 'bg-accent text-gray-900'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-              )}
-            >
-              {cat}
-            </button>
-          ))}
+      ) : error ? (
+        <div className="card p-8 text-center">
+          <WifiOff className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-red-500 font-medium mb-2">{error}</p>
+          <p className="text-gray-400 text-sm">API 키 설정을 확인해주세요</p>
         </div>
+      ) : (
+        <>
+          {/* Blue Ocean Keywords */}
+          {blueOcean.length > 0 && (
+            <div className="card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Gem className="w-5 h-5 text-blue-500" />
+                <h2 className="font-bold text-gray-900">블루오션 키워드</h2>
+                <span className="ml-auto text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                  {blueOcean.length}개 발견
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">
+                경쟁도 낮음 + Money Score 60점 이상 + 월간 검색 500회 이상
+              </p>
+              <KeywordTable keywords={blueOcean} />
+            </div>
+          )}
 
-        {categoryKeywords[selectedCategory] && (
-          <KeywordTable keywords={categoryKeywords[selectedCategory]} />
-        )}
-      </div>
+          {/* All Keywords */}
+          <div className="card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="w-5 h-5 text-orange-500" />
+              <h2 className="font-bold text-gray-900">{selectedCategory} 카테고리 키워드</h2>
+              <span className="ml-auto text-xs text-gray-400">
+                {allKeywords.length}개 &middot; Money Score 순 정렬
+              </span>
+            </div>
+            <KeywordTable keywords={allKeywords} />
+          </div>
+        </>
+      )}
 
       {/* Tips */}
       <div className="card p-6 bg-gradient-to-r from-accent/5 to-emerald-50">
@@ -122,5 +159,18 @@ export default function DiscoverPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DiscoverPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center py-32">
+        <Loader2 className="w-10 h-10 text-purple-500 animate-spin mb-4" />
+        <p className="text-gray-500">로딩 중...</p>
+      </div>
+    }>
+      <DiscoverContent />
+    </Suspense>
   )
 }
