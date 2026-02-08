@@ -24,9 +24,9 @@ export async function GET() {
 
   // 1) 네이버 검색광고 API 테스트
   try {
-    const customerId = process.env.NAVER_AD_CUSTOMER_ID
-    const apiLicense = process.env.NAVER_AD_API_LICENSE
-    const secretKey = process.env.NAVER_AD_SECRET_KEY
+    const customerId = process.env.NAVER_AD_CUSTOMER_ID?.trim()
+    const apiLicense = process.env.NAVER_AD_API_LICENSE?.trim()
+    const secretKey = process.env.NAVER_AD_SECRET_KEY?.trim()
 
     if (!customerId || !apiLicense || !secretKey) {
       results.naverAd = { status: 'error', reason: 'ENV_MISSING', detail: { customerId: !!customerId, apiLicense: !!apiLicense, secretKey: !!secretKey } }
@@ -63,7 +63,20 @@ export async function GET() {
           sampleKeyword: json.keywordList?.[0]?.relKeyword || null,
         }
       } else {
-        results.naverAd = { status: 'api_error', httpStatus: res.status, body: body.slice(0, 500) }
+        results.naverAd = {
+          status: 'api_error',
+          httpStatus: res.status,
+          body: body.slice(0, 500),
+          debug: {
+            secretKeyLength: secretKey.length,
+            secretKeyFirst4: secretKey.slice(0, 4),
+            secretKeyLast4: secretKey.slice(-4),
+            apiLicenseLength: apiLicense.length,
+            customerIdLength: customerId.length,
+            signatureMessage: `${timestamp}.${method}.${path}`,
+            generatedSignature: signature,
+          },
+        }
       }
     }
   } catch (e: unknown) {
@@ -72,8 +85,8 @@ export async function GET() {
 
   // 2) 네이버 검색 API (뉴스) 테스트
   try {
-    const clientId = process.env.NAVER_CLIENT_ID
-    const clientSecret = process.env.NAVER_CLIENT_SECRET
+    const clientId = process.env.NAVER_CLIENT_ID?.trim()
+    const clientSecret = process.env.NAVER_CLIENT_SECRET?.trim()
 
     if (!clientId || !clientSecret) {
       results.naverSearch = { status: 'error', reason: 'ENV_MISSING', detail: { clientId: !!clientId, clientSecret: !!clientSecret } }
@@ -106,8 +119,8 @@ export async function GET() {
 
   // 3) 네이버 DataLab API 테스트
   try {
-    const clientId = process.env.NAVER_CLIENT_ID
-    const clientSecret = process.env.NAVER_CLIENT_SECRET
+    const clientId = process.env.NAVER_CLIENT_ID?.trim()
+    const clientSecret = process.env.NAVER_CLIENT_SECRET?.trim()
 
     if (!clientId || !clientSecret) {
       results.naverDatalab = { status: 'error', reason: 'ENV_MISSING' }
@@ -149,7 +162,7 @@ export async function GET() {
 
   // 4) 카카오 API 테스트
   try {
-    const apiKey = process.env.KAKAO_REST_API_KEY
+    const apiKey = process.env.KAKAO_REST_API_KEY?.trim()
 
     if (!apiKey) {
       results.kakao = { status: 'error', reason: 'ENV_MISSING' }

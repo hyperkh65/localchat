@@ -1,37 +1,29 @@
 /**
  * 환경변수 설정 상태 확인 API
- * - Vercel에 설정된 API 키들이 정상적으로 로드되는지 확인
- * - 키 값 자체는 노출하지 않고, 설정 여부만 반환
+ * - 키 값은 절대 노출하지 않음 (설정 여부만 boolean 반환)
  */
 
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const envStatus = {
     naverAd: {
-      customerId: !!process.env.NAVER_AD_CUSTOMER_ID,
-      apiLicense: !!process.env.NAVER_AD_API_LICENSE,
-      secretKey: !!process.env.NAVER_AD_SECRET_KEY,
-      configured: !!(process.env.NAVER_AD_CUSTOMER_ID && process.env.NAVER_AD_API_LICENSE && process.env.NAVER_AD_SECRET_KEY),
-      maskedId: process.env.NAVER_AD_CUSTOMER_ID
-        ? process.env.NAVER_AD_CUSTOMER_ID.slice(0, 3) + '****'
-        : null,
+      customerId: !!process.env.NAVER_AD_CUSTOMER_ID?.trim(),
+      apiLicense: !!process.env.NAVER_AD_API_LICENSE?.trim(),
+      secretKey: !!process.env.NAVER_AD_SECRET_KEY?.trim(),
+      configured: !!(process.env.NAVER_AD_CUSTOMER_ID?.trim() && process.env.NAVER_AD_API_LICENSE?.trim() && process.env.NAVER_AD_SECRET_KEY?.trim()),
     },
     naverDev: {
-      clientId: !!process.env.NAVER_CLIENT_ID,
-      clientSecret: !!process.env.NAVER_CLIENT_SECRET,
-      configured: !!(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET),
-      maskedId: process.env.NAVER_CLIENT_ID
-        ? process.env.NAVER_CLIENT_ID.slice(0, 4) + '****'
-        : null,
+      clientId: !!process.env.NAVER_CLIENT_ID?.trim(),
+      clientSecret: !!process.env.NAVER_CLIENT_SECRET?.trim(),
+      configured: !!(process.env.NAVER_CLIENT_ID?.trim() && process.env.NAVER_CLIENT_SECRET?.trim()),
     },
     kakao: {
-      restApiKey: !!process.env.KAKAO_REST_API_KEY,
-      adminKey: !!process.env.KAKAO_ADMIN_KEY,
-      configured: !!(process.env.KAKAO_REST_API_KEY),
-      maskedKey: process.env.KAKAO_REST_API_KEY
-        ? process.env.KAKAO_REST_API_KEY.slice(0, 4) + '****'
-        : null,
+      restApiKey: !!process.env.KAKAO_REST_API_KEY?.trim(),
+      adminKey: !!process.env.KAKAO_ADMIN_KEY?.trim(),
+      configured: !!(process.env.KAKAO_REST_API_KEY?.trim()),
     },
   }
 

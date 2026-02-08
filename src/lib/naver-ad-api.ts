@@ -19,9 +19,9 @@ interface NaverAdConfig {
 }
 
 function getConfig(): NaverAdConfig {
-  const customerId = process.env.NAVER_AD_CUSTOMER_ID
-  const apiLicense = process.env.NAVER_AD_API_LICENSE
-  const secretKey = process.env.NAVER_AD_SECRET_KEY
+  const customerId = process.env.NAVER_AD_CUSTOMER_ID?.trim()
+  const apiLicense = process.env.NAVER_AD_API_LICENSE?.trim()
+  const secretKey = process.env.NAVER_AD_SECRET_KEY?.trim()
 
   if (!customerId || !apiLicense || !secretKey) {
     throw new Error(
