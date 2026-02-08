@@ -9,6 +9,7 @@
 const DAUM_BLOG_URL = 'https://dapi.kakao.com/v2/search/blog'
 const DAUM_WEB_URL = 'https://dapi.kakao.com/v2/search/web'
 const DAUM_CAFE_URL = 'https://dapi.kakao.com/v2/search/cafe'
+const REQUEST_TIMEOUT = 10000
 
 function getHeaders(): Record<string, string> {
   const apiKey = process.env.KAKAO_REST_API_KEY
@@ -20,6 +21,13 @@ function getHeaders(): Record<string, string> {
   return {
     Authorization: `KakaoAK ${apiKey}`,
   }
+}
+
+function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timer))
 }
 
 // --- Blog Search ---
@@ -44,7 +52,6 @@ export interface DaumSearchResponse<T> {
 
 /**
  * 다음 블로그 검색
- * - total_count: 전체 블로그 문서 수 (콘텐츠 포화도 비교용)
  */
 export async function searchDaumBlogs(
   query: string,
@@ -59,7 +66,7 @@ export async function searchDaumBlogs(
     sort,
   })
 
-  const response = await fetch(`${DAUM_BLOG_URL}?${params}`, {
+  const response = await fetchWithTimeout(`${DAUM_BLOG_URL}?${params}`, {
     method: 'GET',
     headers: getHeaders(),
     cache: 'no-store',
@@ -67,7 +74,7 @@ export async function searchDaumBlogs(
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Kakao Blog Search API error (${response.status}): ${errorText}`)
+    throw new Error(`Kakao Blog Search API ${response.status}: ${errorText.slice(0, 300)}`)
   }
 
   return response.json()
@@ -84,7 +91,6 @@ export interface DaumWebItem {
 
 /**
  * 다음 웹 검색
- * - total_count: 전체 웹 문서 수
  */
 export async function searchDaumWeb(
   query: string,
@@ -99,7 +105,7 @@ export async function searchDaumWeb(
     sort,
   })
 
-  const response = await fetch(`${DAUM_WEB_URL}?${params}`, {
+  const response = await fetchWithTimeout(`${DAUM_WEB_URL}?${params}`, {
     method: 'GET',
     headers: getHeaders(),
     cache: 'no-store',
@@ -107,7 +113,7 @@ export async function searchDaumWeb(
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Kakao Web Search API error (${response.status}): ${errorText}`)
+    throw new Error(`Kakao Web Search API ${response.status}: ${errorText.slice(0, 300)}`)
   }
 
   return response.json()
@@ -140,7 +146,7 @@ export async function searchDaumCafe(
     sort,
   })
 
-  const response = await fetch(`${DAUM_CAFE_URL}?${params}`, {
+  const response = await fetchWithTimeout(`${DAUM_CAFE_URL}?${params}`, {
     method: 'GET',
     headers: getHeaders(),
     cache: 'no-store',
@@ -148,7 +154,7 @@ export async function searchDaumCafe(
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Kakao Cafe Search API error (${response.status}): ${errorText}`)
+    throw new Error(`Kakao Cafe Search API ${response.status}: ${errorText.slice(0, 300)}`)
   }
 
   return response.json()
@@ -156,7 +162,6 @@ export async function searchDaumCafe(
 
 /**
  * 다음 통합 검색량 추정
- * blog + web + cafe의 total_count를 합산하여 다음 포털의 콘텐츠 규모 추정
  */
 export async function estimateDaumVolume(query: string): Promise<{
   blogTotal: number

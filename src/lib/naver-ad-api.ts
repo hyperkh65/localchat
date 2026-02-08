@@ -10,6 +10,7 @@
 import crypto from 'crypto'
 
 const API_BASE = 'https://api.searchad.naver.com'
+const REQUEST_TIMEOUT = 15000 // 15초
 
 interface NaverAdConfig {
   customerId: string
@@ -23,7 +24,10 @@ function getConfig(): NaverAdConfig {
   const secretKey = process.env.NAVER_AD_SECRET_KEY
 
   if (!customerId || !apiLicense || !secretKey) {
-    throw new Error('Naver Search Ads API credentials are not configured')
+    throw new Error(
+      `Naver Search Ads API credentials missing: ` +
+      `customerId=${!!customerId}, apiLicense=${!!apiLicense}, secretKey=${!!secretKey}`
+    )
   }
 
   return { customerId, apiLicense, secretKey }
@@ -102,20 +106,34 @@ export async function fetchKeywordData(keywords: string, showDetail: boolean = t
 
   const url = `${API_BASE}${path}?${params.toString()}`
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    cache: 'no-store',
-  })
+  // AbortController 타임아웃
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Naver API error (${response.status}): ${errorText}`)
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Naver Ad API ${response.status}: ${errorText.slice(0, 300)}`)
+    }
+
+    const data: NaverKeywordToolResponse = await response.json()
+
+    if (!data.keywordList || !Array.isArray(data.keywordList)) {
+      console.warn('Naver Ad API: unexpected response format', JSON.stringify(data).slice(0, 200))
+      return []
+    }
+
+    return data.keywordList.map(cleanKeywordData)
+  } finally {
+    clearTimeout(timer)
   }
-
-  const data: NaverKeywordToolResponse = await response.json()
-
-  return (data.keywordList || []).map(cleanKeywordData)
 }
 
 function parseVolume(value: number | '<10'): number {

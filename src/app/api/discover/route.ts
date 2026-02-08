@@ -8,6 +8,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchKeywordData } from '@/lib/naver-ad-api'
 import { calculateMoneyScore, getMoneyGrade } from '@/lib/keyword-engine'
 
+export const dynamic = 'force-dynamic'
+export const maxDuration = 30
+
 const categorySeedKeywords: Record<string, string[]> = {
   '재테크': ['주식 투자 방법', '부업 추천', 'ETF 투자', '배당주 추천'],
   '건강': ['건강기능식품 추천', '다이어트 식단', '영양제 추천', '운동 루틴'],
@@ -189,11 +192,13 @@ export async function GET(request: NextRequest) {
       meta: { total: results.length, blueOceanCount: results.filter(r => r.isBlueOcean).length, timestamp: new Date().toISOString() },
     })
   } catch (error: unknown) {
-    console.error('Discover API error:', error instanceof Error ? error.message : error)
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('Discover API error:', msg)
     const fallback = generateFallbackDiscover(category)
     return NextResponse.json({
       success: true,
       isRealData: false,
+      error: msg,
       data: { ...fallback, category },
       meta: { total: fallback.all.length, blueOceanCount: fallback.blueOcean.length, timestamp: new Date().toISOString() },
     })

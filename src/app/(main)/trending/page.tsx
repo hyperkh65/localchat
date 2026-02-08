@@ -39,6 +39,9 @@ export default function TrendingPage() {
           setTrending(json.data)
           setIsRealData(json.isRealData !== false)
           setLastUpdated(new Date().toLocaleTimeString('ko-KR'))
+          if (json.errors?.length) {
+            console.warn('Trending API partial errors:', json.errors)
+          }
         } else {
           setError(json.error || '데이터를 불러올 수 없습니다')
         }
@@ -104,13 +107,21 @@ export default function TrendingPage() {
         <div className="flex items-center gap-3 mb-1">
           <Flame className="w-7 h-7 text-orange-500" />
           <h1 className="text-2xl font-bold text-gray-900">실시간 트렌드</h1>
-          {isRealData && (
+          {isRealData ? (
             <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
               <Wifi className="w-3 h-3" /> 실시간
             </span>
+          ) : (
+            <span className="flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
+              <WifiOff className="w-3 h-3" /> 데모
+            </span>
           )}
         </div>
-        <p className="text-gray-500 text-sm">현재 급상승 중인 키워드를 실시간으로 확인하세요</p>
+        <p className="text-gray-500 text-sm">
+          {isRealData
+            ? '네이버 검색광고 API 기반 실시간 인기 키워드'
+            : 'API 연결 대기 중 - /api/debug 에서 연결 상태를 확인하세요'}
+        </p>
       </div>
 
       {/* Stats */}
@@ -174,8 +185,8 @@ export default function TrendingPage() {
           <h2 className="font-bold text-gray-900">
             급상승 키워드 TOP {filtered.length}
           </h2>
-          <span className="text-xs text-gray-400">
-            {isRealData ? '네이버 뉴스 + 검색광고 API 기반 실데이터' : '데모 데이터'}
+          <span className={`text-xs ${isRealData ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {isRealData ? '네이버 검색광고 API 실데이터' : '데모 데이터 (API 연결 확인 필요)'}
           </span>
         </div>
         <KeywordTable

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { analyzeKeywordReal } from '@/lib/analyze-keyword'
 import { generateDemoAnalysis } from '@/lib/keyword-engine'
 
+export const dynamic = 'force-dynamic'
+export const maxDuration = 30
+
 export async function GET(request: NextRequest) {
   const keyword = request.nextUrl.searchParams.get('keyword')
 
@@ -38,6 +41,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       isRealData: false,
+      error: message,
       data: demoData,
       dataSources: { adApi: false, trendApi: false, blogApi: false, daumApi: false },
     })

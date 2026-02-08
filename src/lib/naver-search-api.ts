@@ -10,13 +10,16 @@
 const DATALAB_URL = 'https://openapi.naver.com/v1/datalab/search'
 const SEARCH_BLOG_URL = 'https://openapi.naver.com/v1/search/blog.json'
 const SEARCH_NEWS_URL = 'https://openapi.naver.com/v1/search/news.json'
+const REQUEST_TIMEOUT = 10000
 
 function getHeaders(): Record<string, string> {
   const clientId = process.env.NAVER_CLIENT_ID
   const clientSecret = process.env.NAVER_CLIENT_SECRET
 
   if (!clientId || !clientSecret) {
-    throw new Error('Naver Developer API credentials are not configured')
+    throw new Error(
+      `Naver Developer API credentials missing: clientId=${!!clientId}, clientSecret=${!!clientSecret}`
+    )
   }
 
   return {
@@ -24,6 +27,13 @@ function getHeaders(): Record<string, string> {
     'X-Naver-Client-Id': clientId,
     'X-Naver-Client-Secret': clientSecret,
   }
+}
+
+function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timer))
 }
 
 // --- DataLab Search Trend ---
@@ -41,8 +51,6 @@ export interface TrendResult {
 
 /**
  * 네이버 DataLab 검색어 트렌드 조회
- * - 최대 5개 키워드 그룹 비교 가능
- * - 상대적 검색 비율 (0~100)
  */
 export async function fetchSearchTrend(
   keywords: string[],
@@ -64,7 +72,7 @@ export async function fetchSearchTrend(
     })),
   }
 
-  const response = await fetch(DATALAB_URL, {
+  const response = await fetchWithTimeout(DATALAB_URL, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(body),
@@ -73,7 +81,7 @@ export async function fetchSearchTrend(
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Naver DataLab API error (${response.status}): ${errorText}`)
+    throw new Error(`Naver DataLab API ${response.status}: ${errorText.slice(0, 300)}`)
   }
 
   const data = await response.json()
@@ -104,7 +112,6 @@ export interface BlogSearchResponse {
 
 /**
  * 네이버 블로그 검색
- * - 블로그 발행량(total) = 콘텐츠 포화도 계산에 활용
  */
 export async function searchBlogs(
   query: string,
@@ -117,7 +124,7 @@ export async function searchBlogs(
     sort,
   })
 
-  const response = await fetch(`${SEARCH_BLOG_URL}?${params}`, {
+  const response = await fetchWithTimeout(`${SEARCH_BLOG_URL}?${params}`, {
     method: 'GET',
     headers: getHeaders(),
     cache: 'no-store',
@@ -125,7 +132,7 @@ export async function searchBlogs(
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Naver Blog Search API error (${response.status}): ${errorText}`)
+    throw new Error(`Naver Blog Search API ${response.status}: ${errorText.slice(0, 300)}`)
   }
 
   return response.json()
@@ -162,7 +169,7 @@ export async function searchNews(
     sort,
   })
 
-  const response = await fetch(`${SEARCH_NEWS_URL}?${params}`, {
+  const response = await fetchWithTimeout(`${SEARCH_NEWS_URL}?${params}`, {
     method: 'GET',
     headers: getHeaders(),
     cache: 'no-store',
@@ -170,7 +177,7 @@ export async function searchNews(
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Naver News Search API error (${response.status}): ${errorText}`)
+    throw new Error(`Naver News Search API ${response.status}: ${errorText.slice(0, 300)}`)
   }
 
   return response.json()
