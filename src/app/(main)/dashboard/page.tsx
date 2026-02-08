@@ -31,7 +31,7 @@ export default function DashboardPage() {
         const json = await res.json()
         if (json.success && json.data) {
           setTrending(json.data)
-          setIsRealData(true)
+          setIsRealData(json.isRealData !== false)
         }
       } catch (err) {
         console.error('Dashboard fetch error:', err)

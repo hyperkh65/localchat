@@ -41,7 +41,7 @@ function DiscoverContent() {
         if (json.success && json.data) {
           setBlueOcean(json.data.blueOcean || [])
           setAllKeywords(json.data.all || [])
-          setIsRealData(true)
+          setIsRealData(json.isRealData !== false)
         } else {
           setError(json.error || '데이터를 불러올 수 없습니다')
         }

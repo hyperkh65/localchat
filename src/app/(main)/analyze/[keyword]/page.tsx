@@ -54,10 +54,10 @@ export default function KeywordAnalysisPage() {
         if (json.success && json.data) {
           setAnalysis(json.data)
           setDataSources(json.dataSources || null)
-          setIsRealData(true)
+          setIsRealData(json.isRealData !== false)
         } else {
-          // API 실패 시 데모 데이터 폴백
-          console.warn('API failed, using demo data:', json.error)
+          // API 완전 실패 시 로컬 데모 데이터 폴백
+          console.warn('API failed, using local demo data:', json.error)
           setAnalysis(generateDemoAnalysis(keyword))
           setIsRealData(false)
         }

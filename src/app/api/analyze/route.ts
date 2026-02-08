@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { analyzeKeywordReal } from '@/lib/analyze-keyword'
+import { generateDemoAnalysis } from '@/lib/keyword-engine'
 
 export async function GET(request: NextRequest) {
   const keyword = request.nextUrl.searchParams.get('keyword')
@@ -11,11 +12,14 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  const trimmed = keyword.trim()
+
   try {
-    const result = await analyzeKeywordReal(keyword.trim())
+    const result = await analyzeKeywordReal(trimmed)
 
     return NextResponse.json({
       success: true,
+      isRealData: true,
       data: result.analysis,
       dataSources: result.dataSources,
       relatedRaw: result.rawData.slice(0, 5).map((r) => ({
@@ -29,9 +33,13 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('Keyword analysis error:', message)
 
-    return NextResponse.json(
-      { error: `분석 실패: ${message}` },
-      { status: 500 }
-    )
+    // API 실패 시 데모 데이터로 폴백 (에러 대신 데이터 반환)
+    const demoData = generateDemoAnalysis(trimmed)
+    return NextResponse.json({
+      success: true,
+      isRealData: false,
+      data: demoData,
+      dataSources: { adApi: false, trendApi: false, blogApi: false, daumApi: false },
+    })
   }
 }
