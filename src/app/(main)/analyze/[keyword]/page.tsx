@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import SearchBar from '@/components/SearchBar'
 import MetricCard from '@/components/MetricCard'
@@ -8,11 +8,12 @@ import MoneyScoreGauge from '@/components/MoneyScoreGauge'
 import KeywordTable from '@/components/KeywordTable'
 import TrendChart from '@/components/TrendChart'
 import { generateDemoAnalysis, generateDemoContentGuide } from '@/lib/keyword-engine'
+import type { KeywordAnalysis } from '@/lib/keyword-engine'
 import { formatNumber, cn } from '@/lib/utils'
 import {
   BarChart3, TrendingUp, Users, MousePointerClick, FileText,
-  DollarSign, Target, Layers, ArrowRight, Copy, CheckCircle,
-  Monitor, Smartphone, Globe, BookOpen
+  DollarSign, Target, Layers, Copy, CheckCircle,
+  Monitor, Smartphone, Globe, BookOpen, Loader2, Wifi, WifiOff, Database
 } from 'lucide-react'
 
 const tabs = [
@@ -29,15 +30,83 @@ export default function KeywordAnalysisPage() {
   const keyword = decodeURIComponent(params.keyword as string)
   const [activeTab, setActiveTab] = useState('overview')
   const [copied, setCopied] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [analysis, setAnalysis] = useState<KeywordAnalysis | null>(null)
+  const [dataSources, setDataSources] = useState<{ adApi: boolean; trendApi: boolean; blogApi: boolean; daumApi: boolean } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isRealData, setIsRealData] = useState(false)
 
-  const analysis = generateDemoAnalysis(keyword)
   const contentGuide = generateDemoContentGuide(keyword)
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchAnalysis() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const res = await fetch(`/api/analyze?keyword=${encodeURIComponent(keyword)}`)
+        const json = await res.json()
+
+        if (cancelled) return
+
+        if (json.success && json.data) {
+          setAnalysis(json.data)
+          setDataSources(json.dataSources || null)
+          setIsRealData(true)
+        } else {
+          // API 실패 시 데모 데이터 폴백
+          console.warn('API failed, using demo data:', json.error)
+          setAnalysis(generateDemoAnalysis(keyword))
+          setIsRealData(false)
+        }
+      } catch (err) {
+        if (cancelled) return
+        console.warn('Network error, using demo data:', err)
+        setAnalysis(generateDemoAnalysis(keyword))
+        setIsRealData(false)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    fetchAnalysis()
+    return () => { cancelled = true }
+  }, [keyword])
+
   const copyKeywords = () => {
+    if (!analysis) return
     const text = analysis.relatedKeywords.map(rk => rk.keyword).join(', ')
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <SearchBar defaultValue={keyword} />
+        <div className="flex flex-col items-center justify-center py-32">
+          <Loader2 className="w-10 h-10 text-accent animate-spin mb-4" />
+          <p className="text-gray-500 font-medium">
+            &ldquo;{keyword}&rdquo; 키워드를 분석 중입니다...
+          </p>
+          <p className="text-gray-400 text-sm mt-1">네이버 검색광고 + DataLab + 블로그 + 다음/카카오 데이터 수집 중</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!analysis) {
+    return (
+      <div className="space-y-6">
+        <SearchBar defaultValue={keyword} />
+        <div className="card p-8 text-center">
+          <p className="text-red-500 font-medium">{error || '분석 데이터를 불러올 수 없습니다'}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -47,10 +116,49 @@ export default function KeywordAnalysisPage() {
         <SearchBar defaultValue={keyword} />
       </div>
 
+      {/* Data Source Badge */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {isRealData ? (
+          <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full">
+            <Wifi className="w-3.5 h-3.5" />
+            실시간 데이터
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full">
+            <WifiOff className="w-3.5 h-3.5" />
+            데모 데이터 (API 연결 확인 필요)
+          </div>
+        )}
+        {dataSources && (
+          <>
+            {dataSources.adApi && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full flex items-center gap-1">
+                <Database className="w-3 h-3" /> 검색광고 API
+              </span>
+            )}
+            {dataSources.trendApi && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full flex items-center gap-1">
+                <Database className="w-3 h-3" /> DataLab 트렌드
+              </span>
+            )}
+            {dataSources.blogApi && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full flex items-center gap-1">
+                <Database className="w-3 h-3" /> 블로그 검색
+              </span>
+            )}
+            {dataSources.daumApi && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full flex items-center gap-1">
+                <Database className="w-3 h-3" /> 다음/카카오
+              </span>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Keyword Title */}
       <div className="flex items-start gap-6">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">&ldquo;{keyword}&rdquo;</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">&ldquo;{analysis.keyword}&rdquo;</h1>
           <p className="text-gray-500 text-sm">키워드 종합 분석 결과</p>
         </div>
         <MoneyScoreGauge score={analysis.moneyScore} />
@@ -217,7 +325,12 @@ export default function KeywordAnalysisPage() {
         {activeTab === 'trend' && (
           <div className="space-y-6">
             <div className="card p-6">
-              <h3 className="font-bold text-gray-900 mb-4">12개월 검색 트렌드</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-900">12개월 검색 트렌드</h3>
+                {dataSources?.trendApi && (
+                  <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">네이버 DataLab 실데이터</span>
+                )}
+              </div>
               <TrendChart data={analysis.trendData} height={350} />
             </div>
 
