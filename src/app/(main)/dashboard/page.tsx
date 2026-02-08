@@ -5,7 +5,7 @@ import SearchBar from '@/components/SearchBar'
 import MetricCard from '@/components/MetricCard'
 import KeywordTable from '@/components/KeywordTable'
 import { formatNumber } from '@/lib/utils'
-import { BarChart3, TrendingUp, Zap, Eye, ArrowRight, Loader2, Wifi } from 'lucide-react'
+import { BarChart3, TrendingUp, Zap, Newspaper, ArrowRight, Loader2, Wifi, WifiOff } from 'lucide-react'
 import Link from 'next/link'
 
 interface TrendingKeyword {
@@ -16,12 +16,15 @@ interface TrendingKeyword {
   moneyScore: number
   moneyGrade: 'S' | 'A' | 'B' | 'C' | 'D'
   category: string
+  changePercent?: number
 }
 
 export default function DashboardPage() {
   const [trending, setTrending] = useState<TrendingKeyword[]>([])
   const [loading, setLoading] = useState(true)
   const [isRealData, setIsRealData] = useState(false)
+  const [newsCount, setNewsCount] = useState(0)
+  const [dataSources, setDataSources] = useState<string[]>([])
 
   useEffect(() => {
     async function fetchData() {
@@ -32,6 +35,8 @@ export default function DashboardPage() {
         if (json.success && json.data) {
           setTrending(json.data)
           setIsRealData(json.isRealData !== false)
+          setNewsCount(json.meta?.newsCount || 0)
+          setDataSources(json.sources || [])
         }
       } catch (err) {
         console.error('Dashboard fetch error:', err)
@@ -48,13 +53,23 @@ export default function DashboardPage() {
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">대시보드</h1>
-          {isRealData && (
-            <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
-              <Wifi className="w-3 h-3" /> 실시간
-            </span>
+          {!loading && (
+            isRealData ? (
+              <span className="flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
+                <Wifi className="w-3 h-3" /> 실시간
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
+                <WifiOff className="w-3 h-3" /> 데모
+              </span>
+            )
           )}
         </div>
-        <p className="text-gray-500 text-sm">키워드 분석 현황과 추천 수익 키워드를 확인하세요</p>
+        <p className="text-gray-500 text-sm">
+          {isRealData
+            ? `뉴스 ${formatNumber(newsCount)}건 분석 | 데이터 소스: ${dataSources.join(', ')}`
+            : '키워드 분석 현황과 추천 수익 키워드를 확인하세요'}
+        </p>
       </div>
 
       {/* Search */}
@@ -63,28 +78,28 @@ export default function DashboardPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="오늘 분석"
-          value="0 / 5"
-          subtitle="무료 일일 분석 횟수"
-          icon={BarChart3}
+          title="수집된 뉴스"
+          value={loading ? '...' : isRealData ? formatNumber(newsCount) : '0'}
+          subtitle="실시간 뉴스 분석"
+          icon={Newspaper}
         />
         <MetricCard
-          title="실시간 급상승"
+          title="트렌딩 키워드"
           value={loading ? '...' : trending.length}
-          subtitle="현재 트렌딩 키워드"
+          subtitle="현재 급상승 중"
           icon={TrendingUp}
         />
         <MetricCard
           title="S등급 키워드"
           value={loading ? '...' : trending.filter(t => t.moneyGrade === 'S').length}
-          subtitle="오늘의 최고 수익 키워드"
+          subtitle="최고 수익성 키워드"
           icon={Zap}
         />
         <MetricCard
           title="분석 가능"
-          value="4개 API"
-          subtitle="네이버 광고/DataLab, 다음/카카오"
-          icon={Eye}
+          value={loading ? '...' : `${dataSources.length > 0 ? dataSources.length : 4}개 API`}
+          subtitle={dataSources.length > 0 ? dataSources.slice(0, 2).join(' + ') : '네이버 + 카카오'}
+          icon={BarChart3}
         />
       </div>
 
@@ -101,7 +116,7 @@ export default function DashboardPage() {
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="w-8 h-8 text-accent animate-spin" />
-              <span className="ml-3 text-gray-500 text-sm">실시간 데이터 로딩 중...</span>
+              <span className="ml-3 text-gray-500 text-sm">뉴스 + 검색 데이터 수집 중...</span>
             </div>
           ) : trending.length > 0 ? (
             <KeywordTable
@@ -117,7 +132,7 @@ export default function DashboardPage() {
           ) : (
             <div className="text-center py-16 text-gray-400">
               <p>트렌딩 데이터를 불러올 수 없습니다</p>
-              <p className="text-sm mt-1">API 키 설정을 확인해주세요</p>
+              <p className="text-sm mt-1">설정에서 API 연결 상태를 확인해주세요</p>
             </div>
           )}
         </div>
@@ -145,6 +160,7 @@ export default function DashboardPage() {
                         <span className="text-sm font-medium text-gray-900">{t.keyword}</span>
                         <span className="block text-xs text-gray-500">
                           {t.category} &middot; {formatNumber(t.searchVolume)}회
+                          {t.changePercent ? ` &middot; +${t.changePercent}%` : ''}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
