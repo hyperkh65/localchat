@@ -13,6 +13,7 @@ import { fetchKeywordData } from '@/lib/naver-ad-api'
 import { searchBlogs } from '@/lib/naver-search-api'
 import { searchDaumBlogs } from '@/lib/kakao-api'
 import { calculateMoneyScore, getMoneyGrade } from '@/lib/keyword-engine'
+import { saveDiscoveredKeywords } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -250,6 +251,18 @@ export async function GET(request: NextRequest) {
     }
 
     results.sort((a, b) => b.moneyScore - a.moneyScore)
+
+    // DB에 발굴 키워드 저장 (비동기)
+    const dbKeywords = results.slice(0, 30).map(r => ({
+      keyword: r.keyword,
+      category: seedKeyword ? `${seedKeyword} 관련` : category,
+      monthly_volume: r.monthlyVolume,
+      competition: r.competition,
+      money_score: r.moneyScore,
+      money_grade: r.moneyGrade,
+      is_blue_ocean: r.isBlueOcean,
+    }))
+    saveDiscoveredKeywords(dbKeywords).catch(() => {})
 
     return NextResponse.json({
       success: true, isRealData: true, sources,

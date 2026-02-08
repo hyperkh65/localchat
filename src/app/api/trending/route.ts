@@ -14,6 +14,7 @@ import { fetchKeywordData } from '@/lib/naver-ad-api'
 import { searchNews, fetchSearchTrend } from '@/lib/naver-search-api'
 import { searchDaumWeb } from '@/lib/kakao-api'
 import { calculateMoneyScore, getMoneyGrade } from '@/lib/keyword-engine'
+import { saveTrendingSnapshot, getLatestTrending, type TrendingRow } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -125,6 +126,27 @@ export async function GET() {
   const sources: string[] = []
 
   try {
+    // ===== 0단계: DB 캐시 확인 (30분 이내 데이터 있으면 재사용) =====
+    const cached = await getLatestTrending(30)
+    if (cached && cached.length > 0) {
+      return NextResponse.json({
+        success: true,
+        data: cached.map((row, i) => ({
+          rank: row.rank || i + 1,
+          keyword: row.keyword,
+          searchVolume: row.search_volume,
+          changePercent: row.change_percent,
+          moneyScore: row.money_score,
+          moneyGrade: row.money_grade,
+          category: row.category,
+          hasAdData: row.source === 'ad',
+        })),
+        isRealData: true,
+        sources: ['db-cache'],
+        meta: { total: cached.length, source: 'db-cache', timestamp: new Date().toISOString() },
+      })
+    }
+
     // ===== 1단계: 뉴스 + 다음 웹에서 실시간 키워드 추출 =====
     const newsPromises = NEWS_QUERIES.map(q => searchNews(q, 100, 'date'))
     const [daumResult, ...newsResults] = await Promise.allSettled([
@@ -257,6 +279,20 @@ export async function GET() {
       .sort((a, b) => b.searchVolume - a.searchVolume)
       .slice(0, 50)
       .map((item, i) => ({ ...item, rank: i + 1 }))
+
+    // ===== 5단계: DB에 저장 (비동기, 실패해도 OK) =====
+    const dbRows: TrendingRow[] = trendingKeywords.map(kw => ({
+      keyword: kw.keyword,
+      search_volume: kw.searchVolume,
+      change_percent: kw.changePercent,
+      money_score: kw.moneyScore,
+      money_grade: kw.moneyGrade,
+      category: kw.category,
+      trend_score: kw.changePercent,
+      rank: kw.rank,
+      source: kw.hasAdData ? 'ad' : 'news',
+    }))
+    saveTrendingSnapshot(dbRows).catch(() => {})
 
     return NextResponse.json({
       success: true,
