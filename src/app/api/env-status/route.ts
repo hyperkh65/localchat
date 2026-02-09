@@ -25,6 +25,15 @@ export async function GET() {
       adminKey: !!process.env.KAKAO_ADMIN_KEY?.trim(),
       configured: !!(process.env.KAKAO_REST_API_KEY?.trim()),
     },
+    gemini: {
+      apiKey: !!process.env.GEMINI_API_KEY?.trim(),
+      configured: !!process.env.GEMINI_API_KEY?.trim(),
+    },
+    supabase: {
+      url: !!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim(),
+      anonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim(),
+      configured: !!(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()),
+    },
   }
 
   const allConfigured = envStatus.naverAd.configured && envStatus.naverDev.configured && envStatus.kakao.configured

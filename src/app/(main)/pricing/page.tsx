@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { Check, Zap, Crown, Building2 } from 'lucide-react'
+import Link from 'next/link'
 
 const plans = [
   {
@@ -13,78 +14,80 @@ const plans = [
     iconColor: 'text-gray-500',
     bgColor: 'bg-white',
     buttonClass: 'btn-secondary',
-    buttonText: '현재 플랜',
+    buttonText: '무료로 시작하기',
+    buttonLink: '/signup',
     popular: false,
     features: [
-      '일 5회 키워드 분석',
-      '기본 분석 (검색량, 경쟁도)',
-      '네이버 데이터',
-      '최근 7일 트렌드',
-      '연관 키워드 10개',
+      '일 10회 키워드 분석',
+      '기본 Money Score 분석',
+      '네이버 + 카카오 데이터',
+      '실시간 트렌딩 키워드',
+      '키워드 발굴 (기본)',
       '기본 콘텐츠 가이드',
+      'Google Trends 한국',
+      'AI 분석 일 3회',
     ],
     disabled: [
-      'Money Score 수익성 분석',
-      '멀티 플랫폼 (구글, 다음, 빙)',
-      '롱테일 키워드 분석',
+      'AI 콘텐츠 가이드 (Gemini)',
+      '블루오션 키워드 필터',
       '대량 키워드 분석',
       'API 액세스',
-      '실시간 알림',
     ],
   },
   {
     name: '프로',
     nameEn: 'Pro',
-    price: '19,900',
+    price: '9,900',
     period: '월',
     icon: Crown,
     iconColor: 'text-accent-dark',
     bgColor: 'bg-white ring-2 ring-accent',
     buttonClass: 'btn-primary',
     buttonText: '프로 시작하기',
+    buttonLink: '/signup',
     popular: true,
     features: [
       '일 100회 키워드 분석',
       'Money Score 수익성 분석',
-      '멀티 플랫폼 (네이버+구글+다음+빙)',
+      '네이버 + 카카오 + Google 데이터',
+      '실시간 트렌딩 + Google Trends',
+      'AI 콘텐츠 가이드 (Gemini)',
+      'AI 분석 일 50회',
+      '블루오션 키워드 발굴',
       '12개월 트렌드 분석',
       '연관 키워드 500개',
-      '롱테일 키워드 분석',
-      '콘텐츠 가이드 (제목, 구조, 전략)',
-      '블루오션 키워드 발굴',
-      '키워드 즐겨찾기',
-      '엑셀 다운로드',
+      '검색 기록 + 일별 통계',
     ],
     disabled: [
-      '대량 키워드 분석',
+      '대량 키워드 분석 (CSV)',
       'API 액세스',
       '팀 계정',
     ],
   },
   {
-    name: '비즈니스',
-    nameEn: 'Business',
-    price: '49,900',
+    name: '프리미엄',
+    nameEn: 'Premium',
+    price: '29,900',
     period: '월',
     icon: Building2,
     iconColor: 'text-purple-500',
     bgColor: 'bg-white',
     buttonClass: 'btn-secondary',
-    buttonText: '비즈니스 시작하기',
+    buttonText: '프리미엄 시작하기',
+    buttonLink: '/signup',
     popular: false,
     features: [
       '무제한 키워드 분석',
-      'Money Score 수익성 분석',
-      '멀티 플랫폼 (전체)',
+      '무제한 AI 분석 (Gemini)',
+      '전체 플랫폼 데이터',
+      '실시간 트렌딩 + Google Trends',
+      'AI 콘텐츠 가이드 (무제한)',
+      '블루오션 키워드 발굴',
       '24개월 트렌드 분석',
-      '연관 키워드 무제한',
-      '롱테일 + 블루오션 분석',
-      '프리미엄 콘텐츠 가이드',
-      '대량 키워드 분석 (CSV 업로드)',
+      '대량 키워드 분석 (CSV)',
       'API 액세스',
-      '실시간 알림 (키워드 모니터링)',
+      '키워드 모니터링 알림',
       '경쟁사 분석',
-      '팀 계정 (최대 5명)',
       '우선 고객 지원',
     ],
     disabled: [],
@@ -121,14 +124,14 @@ export default function PricingPage() {
 
             <div className="mb-6">
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-gray-900">₩{plan.price}</span>
-                <span className="text-sm text-gray-500">/ {plan.period}</span>
+                <span className="text-4xl font-bold text-gray-900">{plan.price === '0' ? '무료' : `₩${plan.price}`}</span>
+                {plan.price !== '0' && <span className="text-sm text-gray-500">/ {plan.period}</span>}
               </div>
             </div>
 
-            <button className={cn('w-full mb-6 text-center', plan.buttonClass)}>
+            <Link href={plan.buttonLink} className={cn('w-full mb-6 text-center block', plan.buttonClass)}>
               {plan.buttonText}
-            </button>
+            </Link>
 
             <div className="space-y-3 flex-1">
               {plan.features.map((feature) => (
@@ -148,6 +151,42 @@ export default function PricingPage() {
         ))}
       </div>
 
+      {/* Comparison Table */}
+      <div className="max-w-4xl mx-auto card p-6">
+        <h2 className="text-lg font-bold text-gray-900 mb-4 text-center">플랜 비교</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-3 px-2 text-gray-500 font-medium">기능</th>
+                <th className="text-center py-3 px-2 text-gray-900 font-bold">무료</th>
+                <th className="text-center py-3 px-2 text-accent-dark font-bold">프로</th>
+                <th className="text-center py-3 px-2 text-purple-600 font-bold">프리미엄</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {[
+                ['일일 검색', '10회', '100회', '무제한'],
+                ['AI 분석 (Gemini)', '3회/일', '50회/일', '무제한'],
+                ['Money Score', 'O', 'O', 'O'],
+                ['Google Trends', 'O', 'O', 'O'],
+                ['콘텐츠 가이드', '기본', 'AI (Gemini)', 'AI (무제한)'],
+                ['블루오션 필터', '-', 'O', 'O'],
+                ['검색 기록', '최근 10개', '전체', '전체'],
+                ['API 액세스', '-', '-', 'O'],
+              ].map(([feature, free, pro, premium]) => (
+                <tr key={feature}>
+                  <td className="py-3 px-2 text-gray-700">{feature}</td>
+                  <td className="py-3 px-2 text-center text-gray-500">{free}</td>
+                  <td className="py-3 px-2 text-center text-gray-900 font-medium">{pro}</td>
+                  <td className="py-3 px-2 text-center text-purple-700 font-medium">{premium}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* FAQ */}
       <div className="max-w-3xl mx-auto">
         <h2 className="text-xl font-bold text-gray-900 text-center mb-6">자주 묻는 질문</h2>
@@ -155,23 +194,19 @@ export default function PricingPage() {
           {[
             {
               q: '무료 플랜으로도 키워드 분석이 가능한가요?',
-              a: '네, 무료 플랜에서도 일 5회까지 기본 키워드 분석(검색량, 경쟁도)이 가능합니다. Money Score 수익성 분석과 멀티 플랫폼 분석은 프로 플랜부터 이용 가능합니다.',
+              a: '네, 무료 플랜에서도 일 10회까지 키워드 분석이 가능합니다. Money Score, 실시간 트렌딩, Google Trends 모두 무료로 이용 가능합니다.',
             },
             {
-              q: '플랜 변경은 언제든 가능한가요?',
-              a: '네, 언제든지 업그레이드 또는 다운그레이드가 가능합니다. 업그레이드 시 즉시 적용되며, 다운그레이드는 다음 결제일부터 적용됩니다.',
+              q: 'AI 분석은 어떻게 동작하나요?',
+              a: 'Google Gemini AI를 활용하여 키워드 트렌드 분석, 콘텐츠 전략 추천, 수익화 방법 등을 자동으로 분석합니다. 무료 플랜은 일 3회, 프로는 50회 이용 가능합니다.',
+            },
+            {
+              q: '결제는 어떻게 하나요?',
+              a: '현재 무료 버전을 운영 중입니다. 유료 플랜은 카드/계좌이체로 결제 예정이며, 결제 시스템 준비 중입니다.',
             },
             {
               q: '환불 정책은 어떻게 되나요?',
-              a: '결제 후 7일 이내에 환불 요청 시 전액 환불됩니다. 7일 이후에는 잔여 기간에 대한 일할 환불이 적용됩니다.',
-            },
-            {
-              q: 'API 액세스는 어떻게 사용하나요?',
-              a: '비즈니스 플랜에서 제공되는 API를 통해 키워드 분석 데이터를 프로그래밍 방식으로 가져올 수 있습니다. 자세한 API 문서는 설정 페이지에서 확인하세요.',
-            },
-            {
-              q: '팀 계정은 어떻게 관리하나요?',
-              a: '비즈니스 플랜에서 최대 5명의 팀원을 초대할 수 있습니다. 각 팀원은 독립적인 분석 히스토리와 즐겨찾기를 가집니다.',
+              a: '결제 후 7일 이내에 환불 요청 시 전액 환불됩니다.',
             },
           ].map((faq) => (
             <details key={faq.q} className="card p-5 group cursor-pointer">
@@ -183,12 +218,6 @@ export default function PricingPage() {
             </details>
           ))}
         </div>
-      </div>
-
-      {/* CTA */}
-      <div className="text-center py-8">
-        <p className="text-gray-500 mb-4">어떤 플랜이 맞는지 모르겠다면?</p>
-        <button className="btn-secondary">문의하기</button>
       </div>
     </div>
   )

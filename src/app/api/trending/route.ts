@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server'
 import { fetchKeywordData } from '@/lib/naver-ad-api'
 import { searchNews, fetchSearchTrend } from '@/lib/naver-search-api'
 import { searchDaumWeb } from '@/lib/kakao-api'
+import { fetchAllGoogleTrends } from '@/lib/google-trends'
 import { calculateMoneyScore, getMoneyGrade } from '@/lib/keyword-engine'
 import { saveTrendingSnapshot, getLatestTrending, type TrendingRow } from '@/lib/supabase'
 
@@ -147,14 +148,40 @@ export async function GET() {
       })
     }
 
-    // ===== 1단계: 뉴스 + 다음 웹에서 실시간 키워드 추출 =====
+    // ===== 1단계: 뉴스 + 다음 웹 + Google Trends 동시 수집 =====
     const newsPromises = NEWS_QUERIES.map(q => searchNews(q, 100, 'date'))
-    const [daumResult, ...newsResults] = await Promise.allSettled([
+    const [daumResult, googleResult, ...newsResults] = await Promise.allSettled([
       searchDaumWeb('실시간 인기 트렌드 이슈', 1, 50, 'recency'),
+      fetchAllGoogleTrends(),
       ...newsPromises,
     ])
 
     const allTitles: string[] = []
+    const googleKeywords: string[] = []
+
+    // Google Trends 키워드 수집
+    if (googleResult.status === 'fulfilled') {
+      const gt = googleResult.value
+      if (gt.daily.length > 0) {
+        sources.push('google-trends-daily')
+        for (const item of gt.daily) {
+          if (item.keyword) googleKeywords.push(item.keyword)
+          allTitles.push(item.keyword)
+          item.relatedQueries?.forEach(q => allTitles.push(q))
+        }
+      }
+      if (gt.realtime.length > 0) {
+        sources.push('google-trends-realtime')
+        for (const item of gt.realtime) {
+          if (item.keyword) googleKeywords.push(item.keyword)
+          allTitles.push(item.keyword)
+        }
+      }
+      if (gt.rssKeywords.length > 0) {
+        googleKeywords.push(...gt.rssKeywords)
+        allTitles.push(...gt.rssKeywords)
+      }
+    }
 
     // 뉴스 제목 수집
     for (const result of newsResults) {
@@ -180,6 +207,10 @@ export async function GET() {
 
     // ===== 2단계: 키워드 추출 + 빈도 순 정렬 =====
     const keywordMap = extractTrendingKeywords(allTitles)
+    // Google Trends 키워드에 가중치 부여
+    for (const gk of googleKeywords) {
+      keywordMap.set(gk, (keywordMap.get(gk) || 0) + 10)
+    }
     const topKeywords = Array.from(keywordMap.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 40)
