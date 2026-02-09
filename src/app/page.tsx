@@ -21,7 +21,8 @@ export default function LandingPage() {
             <Link href="/pricing" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">요금제</Link>
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="btn-primary text-sm">
+            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">로그인</Link>
+            <Link href="/signup" className="btn-primary text-sm">
               무료로 시작하기
             </Link>
           </div>
@@ -178,7 +179,7 @@ export default function LandingPage() {
             지금 바로 수익 키워드를 찾아보세요
           </h2>
           <p className="text-gray-500 mb-8">무료로 시작하고, 프리미엄 기능으로 수익을 극대화하세요</p>
-          <Link href="/dashboard" className="btn-primary text-lg px-10 py-4 inline-block">
+          <Link href="/signup" className="btn-primary text-lg px-10 py-4 inline-block">
             무료로 시작하기
           </Link>
         </div>

@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// 로그인 없이 접근 가능한 경로
-const PUBLIC_PATHS = ['/', '/login', '/signup', '/pricing', '/api/']
+// 로그인 없이 접근 가능한 경로 (최소한만 허용)
+const PUBLIC_PATHS = ['/login', '/signup', '/api/']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -14,13 +14,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 공개 경로 및 정적 파일은 패스
+  // 정적 파일은 패스
   if (
-    PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p)) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.includes('.')
   ) {
+    return NextResponse.next()
+  }
+
+  // 공개 경로는 패스 (로그인, 회원가입, API만)
+  if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p))) {
     return NextResponse.next()
   }
 
@@ -53,11 +57,18 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // 로그인 안 된 상태에서 보호 경로 접근 시 → 로그인 페이지
+  // 로그인 안 된 상태 → 로그인 페이지로 리다이렉트
   if (!user) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
+    if (pathname !== '/') {
+      loginUrl.searchParams.set('redirect', pathname)
+    }
     return NextResponse.redirect(loginUrl)
+  }
+
+  // 로그인된 상태에서 랜딩페이지(/) 접근 → 대시보드로 리다이렉트
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return response
@@ -65,11 +76,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/',
     '/dashboard/:path*',
     '/analyze/:path*',
     '/trending/:path*',
     '/discover/:path*',
     '/content-guide/:path*',
     '/settings/:path*',
+    '/pricing/:path*',
   ],
 }

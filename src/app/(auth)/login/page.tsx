@@ -1,17 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+  const redirectTo = searchParams.get('redirect') || '/dashboard'
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,7 +29,7 @@ export default function LoginPage() {
           setError(error.message)
         }
       } else {
-        router.push('/dashboard')
+        router.push(redirectTo)
       }
     } catch {
       setError('로그인 중 오류가 발생했습니다.')
@@ -101,5 +103,17 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-400">로딩 중...</div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
