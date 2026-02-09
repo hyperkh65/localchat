@@ -1,9 +1,12 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || ''
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || ''
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+// 키가 없으면 더미 클라이언트 (에러 방지)
+export const supabase: SupabaseClient = (supabaseUrl && supabaseKey)
+  ? createClient(supabaseUrl, supabaseKey)
+  : createClient('https://placeholder.supabase.co', 'placeholder-key')
 
 // --- 트렌딩 키워드 저장/조회 ---
 

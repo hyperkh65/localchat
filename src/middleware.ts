@@ -7,6 +7,13 @@ const PUBLIC_PATHS = ['/', '/login', '/signup', '/pricing', '/api/']
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Supabase 키 없으면 인증 스킵 (환경변수 미설정 시)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.next()
+  }
+
   // 공개 경로 및 정적 파일은 패스
   if (
     PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p)) ||
@@ -22,8 +29,8 @@ export async function middleware(request: NextRequest) {
   })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {
