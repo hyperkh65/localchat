@@ -7,6 +7,8 @@ import {
   ExternalLink, Loader2, BookOpen, TrendingUp, Shield,
   Users, FileText, Star, Lightbulb
 } from 'lucide-react'
+import AdSense, { AD_SLOTS } from '@/components/AdSense'
+import AdInterstitial from '@/components/AdInterstitial'
 
 interface BlogRankItem {
   rank: number
@@ -83,10 +85,18 @@ export default function BlogRankPage() {
   const [keywordInfo, setKeywordInfo] = useState<KeywordInfo | null>(null)
   const [myRank, setMyRank] = useState<MyRankResult | null>(null)
   const [searched, setSearched] = useState(false)
+  const [showInterstitial, setShowInterstitial] = useState(false)
+  const [searchCount, setSearchCount] = useState(0)
 
   const handleSearch = async () => {
     const kw = keyword.trim()
     if (!kw) return
+
+    const newCount = searchCount + 1
+    setSearchCount(newCount)
+    if (newCount % 2 === 0) {
+      setShowInterstitial(true)
+    }
 
     setLoading(true)
     setSearched(true)
@@ -113,6 +123,9 @@ export default function BlogRankPage() {
 
   return (
     <div className="space-y-8">
+      {/* Interstitial Ad */}
+      <AdInterstitial show={showInterstitial} onClose={() => setShowInterstitial(false)} delay={5} />
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
@@ -121,6 +134,9 @@ export default function BlogRankPage() {
         </div>
         <p className="text-gray-500 text-sm">키워드별 블로그 순위 분석 & 내 블로그 순위 추적 (판다랭크 + 키자드 벤치마킹)</p>
       </div>
+
+      {/* Ad - Top */}
+      <AdSense slot={AD_SLOTS.BLOG_RANK_TOP} className="my-2" />
 
       {/* Search */}
       <div className="card p-6 space-y-4">
@@ -305,6 +321,9 @@ export default function BlogRankPage() {
             </div>
           )}
 
+          {/* Ad - Mid */}
+          <AdSense slot={AD_SLOTS.BLOG_RANK_MID} format="fluid" className="my-2" />
+
           {/* Blog Rankings Table */}
           {rankings.length > 0 && (
             <div className="card p-6">
@@ -363,6 +382,9 @@ export default function BlogRankPage() {
               </div>
             </div>
           )}
+
+          {/* Ad - Bottom */}
+          <AdSense slot={AD_SLOTS.BLOG_RANK_BOTTOM} className="my-2" />
 
           {/* Empty state */}
           {rankings.length === 0 && !loading && searched && (

@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { generateDemoContentGuide } from '@/lib/keyword-engine'
 import { cn } from '@/lib/utils'
 import { FileText, BookOpen, Heading, Tag, Clock, BarChart3, Lightbulb, Loader2, Brain, Trophy, Compass, ArrowRight } from 'lucide-react'
+import AdSense, { AD_SLOTS } from '@/components/AdSense'
+import AdInterstitial from '@/components/AdInterstitial'
 
 interface ContentGuideData {
   suggestedTitles: string[]
@@ -24,10 +26,19 @@ function ContentGuideContent() {
   const [guide, setGuide] = useState<ContentGuideData | null>(null)
   const [isAI, setIsAI] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showInterstitial, setShowInterstitial] = useState(false)
+  const [generateCount, setGenerateCount] = useState(0)
 
   const handleGenerate = async (kw?: string) => {
     const target = (kw || keyword).trim()
     if (!target) return
+
+    const newCount = generateCount + 1
+    setGenerateCount(newCount)
+    // Show interstitial every 2 generations
+    if (newCount > 1 && newCount % 2 === 0) {
+      setShowInterstitial(true)
+    }
 
     setLoading(true)
     setGuide(null)
@@ -65,6 +76,9 @@ function ContentGuideContent() {
 
   return (
     <div className="space-y-8">
+      {/* Interstitial Ad */}
+      <AdInterstitial show={showInterstitial} onClose={() => setShowInterstitial(false)} delay={5} />
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
@@ -80,6 +94,9 @@ function ContentGuideContent() {
           {isAI ? 'Gemini AI가 분석한 최적의 콘텐츠 전략입니다' : '키워드 기반 블로그 콘텐츠 가이드를 생성합니다'}
         </p>
       </div>
+
+      {/* Ad - Top */}
+      <AdSense slot={AD_SLOTS.CONTENT_GUIDE_TOP} className="my-2" />
 
       {/* Search */}
       <div className="card p-6">
@@ -209,6 +226,9 @@ function ContentGuideContent() {
             </div>
           </div>
 
+          {/* Ad - Mid */}
+          <AdSense slot={AD_SLOTS.CONTENT_GUIDE_MID} format="fluid" className="my-2" />
+
           {/* Competitor Insights */}
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -256,6 +276,9 @@ function ContentGuideContent() {
               </div>
             </button>
           </div>
+
+          {/* Ad - Bottom */}
+          <AdSense slot={AD_SLOTS.CONTENT_GUIDE_BOTTOM} className="my-2" />
 
           {/* Tips */}
           <div className="card p-6 bg-gradient-to-r from-accent/5 to-blue-50">

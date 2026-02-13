@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import KeywordTable from '@/components/KeywordTable'
 import { cn } from '@/lib/utils'
 import { TrendingUp, Flame, Clock, Filter, Loader2, Wifi, WifiOff } from 'lucide-react'
+import AdSense, { AD_SLOTS } from '@/components/AdSense'
 
 interface TrendingKeyword {
   rank: number
@@ -124,6 +125,9 @@ export default function TrendingPage() {
         </p>
       </div>
 
+      {/* Ad - Top */}
+      <AdSense slot={AD_SLOTS.TRENDING_TOP} className="my-2" />
+
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card p-5">
@@ -179,6 +183,9 @@ export default function TrendingPage() {
         </div>
       </div>
 
+      {/* Ad - Mid */}
+      <AdSense slot={AD_SLOTS.TRENDING_MID} format="fluid" className="my-2" />
+
       {/* Trending Table */}
       <div className="card p-6">
         <div className="flex items-center justify-between mb-4">
@@ -200,6 +207,9 @@ export default function TrendingPage() {
           showRank
         />
       </div>
+
+      {/* Ad - Bottom */}
+      <AdSense slot={AD_SLOTS.TRENDING_BOTTOM} className="my-2" />
     </div>
   )
 }

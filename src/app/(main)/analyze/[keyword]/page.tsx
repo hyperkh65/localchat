@@ -15,6 +15,7 @@ import {
   DollarSign, Target, Layers, Copy, CheckCircle,
   Monitor, Smartphone, Globe, BookOpen, Loader2, Wifi, WifiOff, Database
 } from 'lucide-react'
+import AdSense, { AD_SLOTS } from '@/components/AdSense'
 
 const tabs = [
   { id: 'overview', label: '기본 분석', icon: BarChart3 },
@@ -155,6 +156,9 @@ export default function KeywordAnalysisPage() {
         )}
       </div>
 
+      {/* Ad - Top */}
+      <AdSense slot={AD_SLOTS.DASHBOARD_TOP} className="my-2" />
+
       {/* Keyword Title */}
       <div className="flex items-start gap-6">
         <div className="flex-1">
@@ -196,6 +200,9 @@ export default function KeywordAnalysisPage() {
           ))}
         </nav>
       </div>
+
+      {/* Ad - Mid */}
+      <AdSense slot={AD_SLOTS.IN_FEED} format="fluid" className="my-2" />
 
       {/* Tab Content */}
       <div className="min-h-[400px]">
@@ -555,6 +562,9 @@ export default function KeywordAnalysisPage() {
           </div>
         )}
       </div>
+
+      {/* Ad - Bottom */}
+      <AdSense slot={AD_SLOTS.PAGE_BOTTOM} className="my-4" />
     </div>
   )
 }

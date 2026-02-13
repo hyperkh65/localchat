@@ -4,6 +4,8 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Compass, Gem, Target, Lightbulb, Loader2, Wifi, WifiOff, FileText, Trophy, BarChart3, Zap } from 'lucide-react'
+import AdSense, { AD_SLOTS } from '@/components/AdSense'
+import AdInterstitial from '@/components/AdInterstitial'
 
 interface Saturation { index: number; level: string; label: string }
 interface Difficulty { score: number; grade: string; label: string; recommendedBlogLevel: string }
@@ -50,6 +52,8 @@ function DiscoverContent() {
   const [isRealData, setIsRealData] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [seedKeyword, setSeedKeyword] = useState('')
+  const [showInterstitial, setShowInterstitial] = useState(false)
+  const [searchCount, setSearchCount] = useState(0)
 
   const fetchDiscover = async (category: string, seed?: string) => {
     setLoading(true)
@@ -88,11 +92,20 @@ function DiscoverContent() {
   const handleSeedSearch = () => {
     const kw = seedKeyword.trim()
     if (!kw) return
+    const newCount = searchCount + 1
+    setSearchCount(newCount)
+    // Show interstitial ad every 2 searches
+    if (newCount % 2 === 0) {
+      setShowInterstitial(true)
+    }
     fetchDiscover(selectedCategory, kw)
   }
 
   return (
     <div className="space-y-8">
+      {/* Interstitial Ad Modal */}
+      <AdInterstitial show={showInterstitial} onClose={() => setShowInterstitial(false)} delay={5} />
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
@@ -106,6 +119,9 @@ function DiscoverContent() {
         </div>
         <p className="text-gray-500 text-sm">블랙키위 포화도 + 키워드마스터 조합 + 판다랭크 난이도 분석</p>
       </div>
+
+      {/* Ad - Top */}
+      <AdSense slot={AD_SLOTS.DISCOVER_TOP} className="my-2" />
 
       {/* Seed Keyword Search */}
       <div className="card p-6">
@@ -251,6 +267,9 @@ function DiscoverContent() {
             </div>
           )}
 
+          {/* Ad - Mid (between Blue Ocean and All Keywords) */}
+          <AdSense slot={AD_SLOTS.DISCOVER_MID} format="fluid" className="my-2" />
+
           {/* All Keywords */}
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -326,6 +345,9 @@ function DiscoverContent() {
           </div>
         </>
       )}
+
+      {/* Ad - Bottom */}
+      <AdSense slot={AD_SLOTS.DISCOVER_BOTTOM} className="my-2" />
 
       {/* Tips */}
       <div className="card p-6 bg-gradient-to-r from-accent/5 to-emerald-50">

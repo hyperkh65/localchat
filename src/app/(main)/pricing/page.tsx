@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils'
 import { Check, Zap, Crown, Building2 } from 'lucide-react'
 import Link from 'next/link'
+import AdSense, { AD_SLOTS } from '@/components/AdSense'
 
 const plans = [
   {
@@ -151,6 +152,9 @@ export default function PricingPage() {
         ))}
       </div>
 
+      {/* Ad */}
+      <AdSense slot={AD_SLOTS.PRICING_TOP} className="my-4 max-w-5xl mx-auto" />
+
       {/* Comparison Table */}
       <div className="max-w-4xl mx-auto card p-6">
         <h2 className="text-lg font-bold text-gray-900 mb-4 text-center">플랜 비교</h2>
@@ -186,6 +190,9 @@ export default function PricingPage() {
           </table>
         </div>
       </div>
+
+      {/* Ad - Bottom */}
+      <AdSense slot={AD_SLOTS.PAGE_BOTTOM} className="my-4 max-w-4xl mx-auto" />
 
       {/* FAQ */}
       <div className="max-w-3xl mx-auto">

@@ -7,6 +7,7 @@ import KeywordTable from '@/components/KeywordTable'
 import { formatNumber } from '@/lib/utils'
 import { BarChart3, TrendingUp, Zap, Newspaper, ArrowRight, Loader2, Wifi, WifiOff, Clock, Globe, Brain } from 'lucide-react'
 import Link from 'next/link'
+import AdSense, { AD_SLOTS } from '@/components/AdSense'
 
 interface TrendingKeyword {
   rank: number
@@ -145,6 +146,9 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Ad - Top Banner */}
+      <AdSense slot={AD_SLOTS.DASHBOARD_TOP} className="my-2" />
+
       {/* Search */}
       <SearchBar placeholder="분석할 키워드를 입력하세요..." />
 
@@ -196,6 +200,9 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      {/* Ad - Mid Section */}
+      <AdSense slot={AD_SLOTS.DASHBOARD_MID} format="fluid" className="my-2" />
 
       {/* Three Column Layout */}
       <div className="grid lg:grid-cols-3 gap-6">
@@ -291,6 +298,11 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {/* Sidebar Ad */}
+          <div className="card p-3">
+            <AdSense slot={AD_SLOTS.SIDEBAR} className="my-0" />
+          </div>
+
           {/* Today's Recommended */}
           <div className="card p-6">
             <h2 className="text-sm font-bold text-gray-900 mb-3">오늘의 추천</h2>
@@ -319,6 +331,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Ad - Bottom */}
+      <AdSense slot={AD_SLOTS.PAGE_BOTTOM} className="my-2" />
 
       {/* Category Quick Links */}
       <div className="card p-6">
