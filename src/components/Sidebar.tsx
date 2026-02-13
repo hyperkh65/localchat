@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Trophy,
 } from 'lucide-react'
 
 const navItems = [
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/analyze', label: '키워드 분석', icon: Search },
   { href: '/trending', label: '실시간 트렌드', icon: TrendingUp },
   { href: '/discover', label: '키워드 발굴', icon: Compass },
+  { href: '/blog-rank', label: '블로그 랭킹', icon: Trophy },
   { href: '/content-guide', label: '콘텐츠 가이드', icon: FileText },
   { href: '/pricing', label: '요금제', icon: CreditCard },
 ]

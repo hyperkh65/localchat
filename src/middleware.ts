@@ -81,6 +81,7 @@ export const config = {
     '/analyze/:path*',
     '/trending/:path*',
     '/discover/:path*',
+    '/blog-rank/:path*',
     '/content-guide/:path*',
     '/settings/:path*',
     '/pricing/:path*',

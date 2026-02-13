@@ -1,11 +1,15 @@
 /**
- * 블루오션 키워드 발굴 API
+ * 블루오션 키워드 발굴 API (v2 - 벤치마킹 강화)
+ *
+ * 벤치마킹: 블랙키위(포화도), 키워드마스터(조합), 판다랭크(난이도)
  *
  * 전략:
  * 1) 네이버 블로그 검색 (작동중!) → 카테고리별 인기 키워드 추출
  * 2) 카카오/다음 검색 (작동중!) → 추가 키워드 보강
  * 3) 네이버 검색광고 API (보너스) → 실제 검색량 보강
- * 4) API 실패 시 데모 폴백
+ * 4) 콘텐츠 포화도 & 키워드 난이도 계산 (NEW)
+ * 5) 키워드 조합 생성기 (NEW)
+ * 6) API 실패 시 데모 폴백
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -13,6 +17,7 @@ import { fetchKeywordData } from '@/lib/naver-ad-api'
 import { searchBlogs } from '@/lib/naver-search-api'
 import { searchDaumBlogs } from '@/lib/kakao-api'
 import { calculateMoneyScore, getMoneyGrade } from '@/lib/keyword-engine'
+import { calculateSaturationIndex, getKeywordDifficulty } from '@/lib/blog-rank'
 import { saveDiscoveredKeywords } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
@@ -29,23 +34,35 @@ const categorySeedKeywords: Record<string, string[]> = {
   '생활': ['인테리어 추천', '가전 추천', '생활용품 추천', '공기청정기 추천', '로봇청소기'],
 }
 
+// 키워드 조합 생성기 (키워드마스터 벤치마킹)
+const comboSuffixes2 = ['추천', '비교', '후기', '가격', '순위', '방법', '효과', '사용법', '장단점']
+const comboSuffixes3 = ['추천 순위', '비교 분석', '가성비 추천', '인기 순위', '초보 추천', '실제 후기', '최신 정보']
+
+function generateKeywordCombinations(seed: string): string[] {
+  const combos: string[] = []
+  for (const suffix of comboSuffixes2) {
+    combos.push(`${seed} ${suffix}`)
+  }
+  for (const suffix of comboSuffixes3) {
+    combos.push(`${seed} ${suffix}`)
+  }
+  return combos
+}
+
 function estimateCpc(adDepth: number, competition: 'high' | 'medium' | 'low'): number {
   const base = competition === 'high' ? 1500 : competition === 'medium' ? 800 : 300
   return Math.round(base + Math.max(1, adDepth) * 200)
 }
 
-// 블로그 제목에서 키워드 추출
 function extractKeywordsFromTitles(titles: string[]): string[] {
   const stopwords = new Set([
     '있다', '없다', '되다', '하다', '이다', '한다', '위해', '대한', '통해',
     '에서', '으로', '까지', '부터', '라고', '라며', '했다', '됐다', '밝혔다',
   ])
-
   const keywordCount = new Map<string, number>()
 
   for (const title of titles) {
     const clean = title.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ')
-
     const phrases = clean.match(/[가-힣]+\s[가-힣]+(?:\s[가-힣]+)?/g) || []
     for (const phrase of phrases) {
       const trimmed = phrase.trim()
@@ -56,7 +73,6 @@ function extractKeywordsFromTitles(titles: string[]): string[] {
         }
       }
     }
-
     const words = clean.match(/[가-힣]{3,8}/g) || []
     for (const word of words) {
       if (!stopwords.has(word)) {
@@ -71,7 +87,6 @@ function extractKeywordsFromTitles(titles: string[]): string[] {
     .map(([kw]) => kw)
 }
 
-// 카테고리별 폴백 데이터
 const categoryFallback: Record<string, Array<{ keyword: string; volume: number; comp: 'high' | 'medium' | 'low' }>> = {
   '재테크': [
     { keyword: '주식 초보 종목 추천', volume: 5200, comp: 'medium' },
@@ -147,10 +162,13 @@ function generateFallbackDiscover(category: string) {
     const cpc = item.comp === 'high' ? 2200 : item.comp === 'medium' ? 1100 : 450
     const posts = Math.round(item.volume * (item.comp === 'high' ? 2.0 : item.comp === 'medium' ? 1.0 : 0.4))
     const moneyScore = calculateMoneyScore({ volume: item.volume, competition: item.comp, cpcEstimate: cpc, keyword: item.keyword, monthlyPosts: posts })
+    const saturation = calculateSaturationIndex(posts, item.volume)
+    const difficulty = getKeywordDifficulty(item.volume, item.comp, saturation.index)
     return {
       keyword: item.keyword, monthlyVolume: item.volume, competition: item.comp,
       moneyScore, moneyGrade: getMoneyGrade(moneyScore), cpcEstimate: cpc,
       isBlueOcean: item.comp !== 'high' && moneyScore >= 60 && item.volume >= 500,
+      saturation, difficulty,
     }
   }).sort((a, b) => b.moneyScore - a.moneyScore)
   return { blueOcean: results.filter(r => r.isBlueOcean), all: results }
@@ -165,18 +183,24 @@ export async function GET(request: NextRequest) {
   try {
     const seeds = seedKeyword ? [seedKeyword] : (categorySeedKeywords[category] || categorySeedKeywords['재테크'])
 
+    // 키워드 조합 생성 (시드 기반)
+    const keywordCombinations = seedKeyword ? generateKeywordCombinations(seedKeyword) : []
+
     // ===== 1단계: 블로그 검색 + 검색광고 병렬 호출 =====
     const blogPromises = seeds.slice(0, 3).map(s => searchBlogs(s, 30, 'sim'))
     const daumPromises = seeds.slice(0, 2).map(s => searchDaumBlogs(s, 1, 30, 'accuracy'))
 
     const allResults = await Promise.allSettled([
       fetchKeywordData(seeds.slice(0, 4).join(',')),
+      ...(keywordCombinations.length > 0 ? [fetchKeywordData(keywordCombinations.slice(0, 5).join(','))] : []),
       ...blogPromises,
       ...daumPromises,
     ])
 
     const adResult = allResults[0]
-    const searchResults = allResults.slice(1)
+    const comboAdResult = keywordCombinations.length > 0 ? allResults[1] : null
+    const searchStartIdx = keywordCombinations.length > 0 ? 2 : 1
+    const searchResults = allResults.slice(searchStartIdx)
 
     // 블로그 제목에서 키워드 추출
     const allTitles: string[] = []
@@ -198,7 +222,9 @@ export async function GET(request: NextRequest) {
 
     // ===== 2단계: 검색광고 API 데이터 =====
     const adKeywords = adResult.status === 'fulfilled' ? adResult.value : []
-    if (adKeywords.length > 0) sources.push('naver-ad')
+    const comboAdKeywords = (comboAdResult && comboAdResult.status === 'fulfilled' ? comboAdResult.value : []) as typeof adKeywords
+    const allAdKeywords = [...(Array.isArray(adKeywords) ? adKeywords : []), ...(Array.isArray(comboAdKeywords) ? comboAdKeywords : [])]
+    if (allAdKeywords.length > 0) sources.push('naver-ad')
     if (adResult.status === 'rejected') errors.push(`ad: ${(adResult.reason as Error)?.message?.slice(0, 80) || 'failed'}`)
 
     // ===== 3단계: 결과 조합 =====
@@ -206,10 +232,12 @@ export async function GET(request: NextRequest) {
     const results: Array<{
       keyword: string; monthlyVolume: number; competition: 'high' | 'medium' | 'low';
       moneyScore: number; moneyGrade: string; cpcEstimate: number; isBlueOcean: boolean;
+      saturation: { index: number; level: string; label: string };
+      difficulty: { score: number; grade: string; label: string; recommendedBlogLevel: string };
     }> = []
 
     // 검색광고 데이터 (정확한 검색량)
-    for (const kw of adKeywords) {
+    for (const kw of allAdKeywords) {
       if (seen.has(kw.keyword.toLowerCase())) continue
       seen.add(kw.keyword.toLowerCase())
       if (kw.monthlyTotalVolume < 50) continue
@@ -217,10 +245,14 @@ export async function GET(request: NextRequest) {
       const cpcEstimate = estimateCpc(kw.adDepth, kw.competition)
       const monthlyPosts = Math.round(kw.monthlyTotalVolume * (kw.competition === 'high' ? 2.5 : kw.competition === 'medium' ? 1.2 : 0.4))
       const moneyScore = calculateMoneyScore({ volume: kw.monthlyTotalVolume, competition: kw.competition, cpcEstimate, keyword: kw.keyword, monthlyPosts })
+      const saturation = calculateSaturationIndex(monthlyPosts, kw.monthlyTotalVolume)
+      const difficulty = getKeywordDifficulty(kw.monthlyTotalVolume, kw.competition, saturation.index)
+
       results.push({
         keyword: kw.keyword, monthlyVolume: kw.monthlyTotalVolume, competition: kw.competition,
         moneyScore, moneyGrade: getMoneyGrade(moneyScore), cpcEstimate,
         isBlueOcean: kw.competition !== 'high' && moneyScore >= 60 && kw.monthlyTotalVolume >= 500,
+        saturation, difficulty,
       })
     }
 
@@ -234,10 +266,14 @@ export async function GET(request: NextRequest) {
       const cpcEstimate = estimateCpc(2, competition)
       const monthlyPosts = Math.round(estimatedVolume * (competition === 'medium' ? 1.2 : 0.4))
       const moneyScore = calculateMoneyScore({ volume: estimatedVolume, competition, cpcEstimate, keyword: kw, monthlyPosts })
+      const saturation = calculateSaturationIndex(monthlyPosts, estimatedVolume)
+      const difficulty = getKeywordDifficulty(estimatedVolume, competition, saturation.index)
+
       results.push({
         keyword: kw, monthlyVolume: estimatedVolume, competition,
         moneyScore, moneyGrade: getMoneyGrade(moneyScore), cpcEstimate,
         isBlueOcean: moneyScore >= 60 && estimatedVolume >= 500,
+        saturation, difficulty,
       })
     }
 
@@ -245,7 +281,7 @@ export async function GET(request: NextRequest) {
       const fallback = generateFallbackDiscover(category)
       return NextResponse.json({
         success: true, isRealData: false, sources, errors,
-        data: { ...fallback, category: seedKeyword ? `"${seedKeyword}" 관련` : category },
+        data: { ...fallback, category: seedKeyword ? `"${seedKeyword}" 관련` : category, combinations: keywordCombinations },
         meta: { total: fallback.all.length, blueOceanCount: fallback.blueOcean.length, timestamp: new Date().toISOString() },
       })
     }
@@ -271,6 +307,7 @@ export async function GET(request: NextRequest) {
         blueOcean: results.filter(r => r.isBlueOcean).slice(0, 20),
         all: results.slice(0, 50),
         category: seedKeyword ? `"${seedKeyword}" 관련` : category,
+        combinations: keywordCombinations,
       },
       meta: { total: results.length, blueOceanCount: results.filter(r => r.isBlueOcean).length, timestamp: new Date().toISOString() },
     })
@@ -280,7 +317,7 @@ export async function GET(request: NextRequest) {
     const fallback = generateFallbackDiscover(category)
     return NextResponse.json({
       success: true, isRealData: false, error: msg,
-      data: { ...fallback, category },
+      data: { ...fallback, category, combinations: [] },
       meta: { total: fallback.all.length, blueOceanCount: fallback.blueOcean.length, timestamp: new Date().toISOString() },
     })
   }

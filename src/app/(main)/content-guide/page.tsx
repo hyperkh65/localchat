@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { generateDemoContentGuide } from '@/lib/keyword-engine'
 import { cn } from '@/lib/utils'
-import { FileText, BookOpen, Heading, Tag, Clock, BarChart3, Lightbulb, Loader2, Brain } from 'lucide-react'
+import { FileText, BookOpen, Heading, Tag, Clock, BarChart3, Lightbulb, Loader2, Brain, Trophy, Compass, ArrowRight } from 'lucide-react'
 
 interface ContentGuideData {
   suggestedTitles: string[]
@@ -14,38 +15,50 @@ interface ContentGuideData {
   competitorInsights: string[]
 }
 
-export default function ContentGuidePage() {
-  const [keyword, setKeyword] = useState('')
+function ContentGuideContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const urlKeyword = searchParams.get('keyword') || ''
+
+  const [keyword, setKeyword] = useState(urlKeyword)
   const [guide, setGuide] = useState<ContentGuideData | null>(null)
   const [isAI, setIsAI] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const handleGenerate = async () => {
-    const kw = keyword.trim()
-    if (!kw) return
+  const handleGenerate = async (kw?: string) => {
+    const target = (kw || keyword).trim()
+    if (!target) return
 
     setLoading(true)
     setGuide(null)
 
     try {
-      const res = await fetch(`/api/content-guide?keyword=${encodeURIComponent(kw)}`)
+      const res = await fetch(`/api/content-guide?keyword=${encodeURIComponent(target)}`)
       const json = await res.json()
       if (json.success && json.data) {
         setGuide(json.data)
         setIsAI(json.isAI === true)
       } else {
-        const fallback = generateDemoContentGuide(kw)
+        const fallback = generateDemoContentGuide(target)
         setGuide(fallback)
         setIsAI(false)
       }
     } catch {
-      const fallback = generateDemoContentGuide(kw)
+      const fallback = generateDemoContentGuide(target)
       setGuide(fallback)
       setIsAI(false)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (urlKeyword) {
+      setKeyword(urlKeyword)
+      handleGenerate(urlKeyword)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlKeyword])
 
   const displayGuide = guide || generateDemoContentGuide('부업 추천')
   const displayKeyword = keyword.trim() || '부업 추천'
@@ -64,7 +77,7 @@ export default function ContentGuidePage() {
           )}
         </div>
         <p className="text-gray-500 text-sm">
-          {isAI ? 'Gemini AI가 분석한 최적의 콘텐츠 전략입니다' : '키워드 기반으로 블로그/뉴스 콘텐츠 작성 방향을 제안합니다'}
+          {isAI ? 'Gemini AI가 분석한 최적의 콘텐츠 전략입니다' : '키워드 기반 블로그 콘텐츠 가이드를 생성합니다'}
         </p>
       </div>
 
@@ -82,10 +95,27 @@ export default function ContentGuidePage() {
               className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-3 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
             />
           </div>
-          <button onClick={handleGenerate} disabled={loading} className="btn-primary whitespace-nowrap disabled:opacity-50">
+          <button onClick={() => handleGenerate()} disabled={loading} className="btn-primary whitespace-nowrap disabled:opacity-50">
             {loading ? '생성 중...' : '가이드 생성'}
           </button>
         </div>
+        {/* Quick Links to other tools */}
+        {keyword.trim() && (
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => router.push(`/blog-rank?keyword=${encodeURIComponent(displayKeyword)}`)}
+              className="flex items-center gap-1 text-xs text-yellow-700 bg-yellow-50 px-3 py-1.5 rounded-full hover:bg-yellow-100 transition-colors"
+            >
+              <Trophy className="w-3 h-3" /> 블로그 랭킹 보기
+            </button>
+            <button
+              onClick={() => router.push(`/discover?seed=${encodeURIComponent(displayKeyword)}`)}
+              className="flex items-center gap-1 text-xs text-purple-700 bg-purple-50 px-3 py-1.5 rounded-full hover:bg-purple-100 transition-colors"
+            >
+              <Compass className="w-3 h-3" /> 관련 키워드 발굴
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Loading */}
@@ -93,7 +123,6 @@ export default function ContentGuidePage() {
         <div className="card p-12 text-center">
           <Loader2 className="w-10 h-10 text-accent animate-spin mx-auto mb-4" />
           <p className="text-gray-500">AI가 콘텐츠 전략을 분석하고 있습니다...</p>
-          <p className="text-xs text-gray-400 mt-1">Gemini 연결 시 AI 분석, 미연결 시 기본 가이드 생성</p>
         </div>
       )}
 
@@ -113,7 +142,7 @@ export default function ContentGuidePage() {
                   <span className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-sm font-bold text-gray-900 flex-shrink-0">
                     {i + 1}
                   </span>
-                  <span className="text-sm text-gray-800 group-hover:text-gray-900 font-medium">{title}</span>
+                  <span className="text-sm text-gray-800 group-hover:text-gray-900 font-medium flex-1">{title}</span>
                 </div>
               ))}
             </div>
@@ -149,9 +178,13 @@ export default function ContentGuidePage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {displayGuide.requiredKeywords.map((kw) => (
-                    <span key={kw} className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-medium border border-emerald-100">
+                    <button
+                      key={kw}
+                      onClick={() => { setKeyword(kw); handleGenerate(kw) }}
+                      className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-medium border border-emerald-100 hover:bg-emerald-100 transition-colors cursor-pointer"
+                    >
                       {kw}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -176,7 +209,7 @@ export default function ContentGuidePage() {
             </div>
           </div>
 
-          {/* Competitor Insights / Tips */}
+          {/* Competitor Insights */}
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
               <BarChart3 className="w-5 h-5 text-orange-500" />
@@ -192,6 +225,36 @@ export default function ContentGuidePage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <button
+              onClick={() => router.push(`/blog-rank?keyword=${encodeURIComponent(displayKeyword)}`)}
+              className="card p-5 hover:shadow-lg transition-shadow text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <Trophy className="w-8 h-8 text-yellow-500" />
+                <div>
+                  <h3 className="font-bold text-gray-900 group-hover:text-yellow-600 transition-colors">블로그 랭킹 확인</h3>
+                  <p className="text-xs text-gray-500">상위 포스트를 역분석하고 내 블로그 순위를 확인하세요</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-yellow-500 ml-auto transition-colors" />
+              </div>
+            </button>
+            <button
+              onClick={() => router.push(`/discover?seed=${encodeURIComponent(displayKeyword)}`)}
+              className="card p-5 hover:shadow-lg transition-shadow text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <Compass className="w-8 h-8 text-purple-500" />
+                <div>
+                  <h3 className="font-bold text-gray-900 group-hover:text-purple-600 transition-colors">관련 키워드 발굴</h3>
+                  <p className="text-xs text-gray-500">이 키워드의 롱테일 & 블루오션 키워드를 찾으세요</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-purple-500 ml-auto transition-colors" />
+              </div>
+            </button>
           </div>
 
           {/* Tips */}
@@ -213,5 +276,18 @@ export default function ContentGuidePage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ContentGuidePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center py-32">
+        <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
+        <p className="text-gray-500">로딩 중...</p>
+      </div>
+    }>
+      <ContentGuideContent />
+    </Suspense>
   )
 }
